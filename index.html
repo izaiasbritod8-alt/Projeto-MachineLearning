@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="PT-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verifica Pets</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #05070d;
+            --bg-panel: #0b1220;
+            --line: #1c2740;
+            --blue: #3b82f6;
+            --blue-dim: #1d4ed8;
+            --text: #e5e9f0;
+            --text-dim: #7c8aa5;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background:
+                radial-gradient(circle at 50% 0%, #0d1830 0%, var(--bg) 55%);
+            color: var(--text);
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 32px 20px;
+        }
+
+        .app {
+            width: 100%;
+            max-width: 420px;
+            text-align: center;
+        }
+
+        .eyebrow {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: var(--blue);
+        }
+
+        h1 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 30px;
+            font-weight: 700;
+            margin: 6px 0 4px;
+            letter-spacing: -0.01em;
+        }
+
+        h1 .emoji {
+            font-size: 24px;
+            vertical-align: -2px;
+            margin: 0 2px;
+            filter: grayscale(0.15);
+        }
+
+        .subtitle {
+            font-size: 14px;
+            color: var(--text-dim);
+            margin: 0 0 24px;
+        }
+
+        /* Viewfinder / scan frame — the signature element */
+        .scan-frame {
+            position: relative;
+            width: 240px;
+            height: 240px;
+            margin: 0 auto 16px;
+            border-radius: 4px;
+            background: var(--bg-panel);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .scan-frame::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: repeating-linear-gradient(
+                0deg,
+                rgba(59, 130, 246, 0.05) 0px,
+                rgba(59, 130, 246, 0.05) 1px,
+                transparent 1px,
+                transparent 22px
+            );
+            pointer-events: none;
+        }
+
+        .corner {
+            position: absolute;
+            width: 22px;
+            height: 22px;
+            border: 2px solid var(--blue);
+            opacity: 0.85;
+            z-index: 2;
+        }
+        .corner.tl { top: -1px; left: -1px; border-right: none; border-bottom: none; }
+        .corner.tr { top: -1px; right: -1px; border-left: none; border-bottom: none; }
+        .corner.bl { bottom: -1px; left: -1px; border-right: none; border-top: none; }
+        .corner.br { bottom: -1px; right: -1px; border-left: none; border-top: none; }
+
+        .scan-frame.active .scan-line {
+            display: block;
+        }
+        .scan-line {
+            display: none;
+            position: absolute;
+            left: 6px;
+            right: 6px;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--blue), transparent);
+            box-shadow: 0 0 8px var(--blue);
+            animation: sweep 2.4s ease-in-out infinite;
+            z-index: 2;
+        }
+        @keyframes sweep {
+            0%   { top: 6%; }
+            50%  { top: 94%; }
+            100% { top: 6%; }
+        }
+
+        #webcam-container,
+        #upload-preview {
+            position: relative;
+            z-index: 1;
+            line-height: 0;
+        }
+        #webcam-container canvas,
+        #upload-preview img {
+            border-radius: 2px;
+            display: block;
+        }
+        #upload-preview img {
+            width: 224px;
+            height: 224px;
+            object-fit: cover;
+        }
+        #upload-preview {
+            display: none;
+        }
+
+        .placeholder {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            color: var(--text-dim);
+            letter-spacing: 0.05em;
+        }
+
+        .placeholder .paw {
+            display: block;
+            font-size: 26px;
+            margin-bottom: 8px;
+            opacity: 0.7;
+        }
+
+        /* Actions row */
+        .actions {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 22px;
+            flex-wrap: wrap;
+        }
+
+        button, .upload-btn {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            letter-spacing: 0.01em;
+            border-radius: 4px;
+            padding: 12px 22px;
+            transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+        }
+
+        button {
+            color: var(--bg);
+            background: var(--blue);
+            border: none;
+        }
+        button:hover { background: #559bff; }
+        button:active { transform: scale(0.98); }
+
+        .upload-btn {
+            color: var(--text);
+            background: transparent;
+            border: 1px solid var(--line);
+        }
+        .upload-btn:hover { border-color: var(--blue); color: var(--blue); }
+
+        button:focus-visible,
+        .upload-btn:focus-visible,
+        .dropzone:focus-visible {
+            outline: 2px solid var(--text);
+            outline-offset: 3px;
+        }
+
+        /* Dropzone */
+        .dropzone {
+            margin-top: 6px;
+            border: 1.5px dashed var(--line);
+            border-radius: 6px;
+            padding: 18px 14px;
+            cursor: pointer;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            color: var(--text-dim);
+            transition: border-color 0.15s ease, background 0.15s ease;
+        }
+        .dropzone .paw-row {
+            font-size: 18px;
+            margin-bottom: 6px;
+            letter-spacing: 4px;
+        }
+        .dropzone:hover,
+        .dropzone.drag-over {
+            border-color: var(--blue);
+            background: rgba(59, 130, 246, 0.06);
+            color: var(--text);
+        }
+        .dropzone input[type="file"] {
+            display: none;
+        }
+
+        .disclaimer {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            margin-top: 10px;
+            padding: 10px 12px;
+            background: rgba(59, 130, 246, 0.05);
+            border: 1px solid var(--line);
+            border-radius: 4px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            line-height: 1.5;
+            color: var(--text-dim);
+            text-align: left;
+        }
+
+        .disclaimer .mark {
+            flex-shrink: 0;
+            font-size: 13px;
+        }
+
+        #label-container {
+            margin-top: 22px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            text-align: left;
+        }
+
+        .result-row {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            background: var(--bg-panel);
+            border: 1px solid var(--line);
+            border-radius: 4px;
+        }
+
+        .result-row .icon {
+            font-size: 16px;
+            flex-shrink: 0;
+            width: 18px;
+            text-align: center;
+        }
+
+        .result-row .name {
+            width: 78px;
+            flex-shrink: 0;
+            color: var(--text);
+        }
+
+        .result-row .bar-track {
+            flex: 1;
+            height: 6px;
+            background: #0f1830;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .result-row .bar-fill {
+            height: 100%;
+            background: var(--blue);
+            border-radius: 3px;
+            transition: width 0.15s linear;
+        }
+
+        .result-row .value {
+            width: 42px;
+            text-align: right;
+            color: var(--text-dim);
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .scan-line { animation: none; top: 50%; }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app">
+        <div class="eyebrow">Teachable Machine · Image Model</div>
+        <h1><span class="emoji">🐱</span>Verifica Pets<span class="emoji">🐶</span></h1>
+        <p class="subtitle">Use a webcam ou solte uma imagem: gato ou cachorro?</p>
+
+        <div class="scan-frame" id="scan-frame">
+            <div class="corner tl"></div>
+            <div class="corner tr"></div>
+            <div class="corner bl"></div>
+            <div class="corner br"></div>
+            <div class="scan-line" id="scan-line"></div>
+            <div id="webcam-container">
+                <span class="placeholder"><span class="paw">🐾</span>Aguardando câmera…</span>
+            </div>
+            <div id="upload-preview"></div>
+        </div>
+
+        <div class="actions">
+            <button type="button" onclick="init()">Iniciar webcam</button>
+            <label class="upload-btn" for="file-input">Escolher imagem</label>
+        </div>
+
+        <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Arraste uma imagem ou clique para selecionar">
+            <div class="paw-row">🐾 🐾 🐾</div>
+            Arraste uma foto de gato ou cachorro aqui
+            <input type="file" id="file-input" accept="image/*">
+        </div>
+
+        <p class="disclaimer"><span class="mark">🐾</span><span>Este site reconhece apenas imagens de gatos ou cachorros — outras fotos podem gerar resultados incorretos.</span></p>
+
+        <div id="label-container"></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+    <script type="text/javascript">
+        // More API functions here:
+        // https://github.com/googlecreativelab/teachablemachine-community/tree/master/libraries/image
+
+        // the link to your model provided by Teachable Machine export panel
+        const URL = "./model/";
+
+        let model, webcam, labelContainer, maxPredictions;
+        let webcamRunning = false;
+
+        // emoji shown next to each class, matched loosely by name
+        function emojiFor(className) {
+            const n = className.toLowerCase();
+            if (n.includes("gato") || n.includes("cat")) return "🐱";
+            if (n.includes("cachorro") || n.includes("dog")) return "🐶";
+            return "❔";
+        }
+
+        // loads the model + metadata once, and builds the result rows
+        async function loadModel() {
+            if (!model) {
+                const modelURL = URL + "model.json";
+                const metadataURL = URL + "metadata.json";
+                model = await tmImage.load(modelURL, metadataURL);
+                maxPredictions = model.getTotalClasses();
+            }
+
+            if (!labelContainer) {
+                labelContainer = document.getElementById("label-container");
+                labelContainer.innerHTML = "";
+                for (let i = 0; i < maxPredictions; i++) {
+                    const row = document.createElement("div");
+                    row.className = "result-row";
+                    row.innerHTML =
+                        '<span class="icon"></span>' +
+                        '<span class="name"></span>' +
+                        '<span class="bar-track"><span class="bar-fill"></span></span>' +
+                        '<span class="value"></span>';
+                    labelContainer.appendChild(row);
+                }
+            }
+        }
+
+        // Load the image model and setup the webcam
+        async function init() {
+            await loadModel();
+
+            // stop any running webcam before restarting
+            if (webcam) {
+                webcam.stop();
+            }
+
+            // switch view back to the webcam frame
+            document.getElementById("upload-preview").style.display = "none";
+            document.getElementById("webcam-container").style.display = "block";
+
+            const flip = true; // whether to flip the webcam
+            webcam = new tmImage.Webcam(224, 224, flip); // width, height, flip
+            await webcam.setup(); // request access to the webcam
+            await webcam.play();
+            webcamRunning = true;
+            window.requestAnimationFrame(loop);
+
+            const webcamContainer = document.getElementById("webcam-container");
+            webcamContainer.innerHTML = "";
+            webcamContainer.appendChild(webcam.canvas);
+            document.getElementById("scan-frame").classList.add("active");
+        }
+
+        async function loop() {
+            if (!webcamRunning) return;
+            webcam.update(); // update the webcam frame
+            await predict(webcam.canvas);
+            window.requestAnimationFrame(loop);
+        }
+
+        // run any image/canvas element through the model and update the UI
+        async function predict(source) {
+            const prediction = await model.predict(source);
+            for (let i = 0; i < maxPredictions; i++) {
+                const row = labelContainer.childNodes[i];
+                const pct = Math.round(prediction[i].probability * 100);
+                row.querySelector(".icon").textContent = emojiFor(prediction[i].className);
+                row.querySelector(".name").textContent = prediction[i].className;
+                row.querySelector(".bar-fill").style.width = pct + "%";
+                row.querySelector(".value").textContent = pct + "%";
+            }
+        }
+
+        // ---- image upload / drag-and-drop ----
+
+        async function handleImageFile(file) {
+            if (!file || !file.type.startsWith("image/")) return;
+
+            // stop the webcam loop if it's running, so it doesn't overwrite results
+            webcamRunning = false;
+            if (webcam) {
+                webcam.stop();
+            }
+            document.getElementById("scan-frame").classList.remove("active");
+
+            await loadModel();
+
+            const objectUrl = window.URL.createObjectURL(file);
+            const img = new Image();
+            img.onload = async () => {
+                document.getElementById("webcam-container").style.display = "none";
+                const previewEl = document.getElementById("upload-preview");
+                previewEl.innerHTML = "";
+                previewEl.appendChild(img);
+                previewEl.style.display = "block";
+                await predict(img);
+            };
+            img.src = objectUrl;
+        }
+
+        const dropzone = document.getElementById("dropzone");
+        const fileInput = document.getElementById("file-input");
+
+        dropzone.addEventListener("click", () => fileInput.click());
+        dropzone.addEventListener("keydown", (e) => {
+            if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                fileInput.click();
+            }
+        });
+
+        fileInput.addEventListener("change", (e) => {
+            if (e.target.files && e.target.files[0]) {
+                handleImageFile(e.target.files[0]);
+            }
+        });
+
+        ["dragenter", "dragover"].forEach((evt) => {
+            dropzone.addEventListener(evt, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dropzone.classList.add("drag-over");
+            });
+        });
+
+        ["dragleave", "drop"].forEach((evt) => {
+            dropzone.addEventListener(evt, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dropzone.classList.remove("drag-over");
+            });
+        });
+
+        dropzone.addEventListener("drop", (e) => {
+            const file = e.dataTransfer.files && e.dataTransfer.files[0];
+            if (file) handleImageFile(file);
+        });
+    </script>
+</body>
+</html>
